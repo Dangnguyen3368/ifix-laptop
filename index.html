@@ -237,8 +237,8 @@
         <li>📞 Zalo / Hotline: <span id="shop-phone-text">0914 993 368</span></li>
       </ul>
       <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <a class="btn btn-primary" id="zalo-link" href="#" target="_blank" rel="noopener">💬 Nhắn Zalo tư vấn</a>
-        <a class="btn btn-fb" href="https://www.facebook.com/dang.nguyenphong/" target="_blank" rel="noopener">f  Facebook</a>
+        <a class="btn btn-primary" id="zalo-link" data-goatcounter-click="bam-zalo-lien-he" href="#" target="_blank" rel="noopener">💬 Nhắn Zalo tư vấn</a>
+        <a class="btn btn-fb" data-goatcounter-click="bam-facebook" href="https://www.facebook.com/dang.nguyenphong/" target="_blank" rel="noopener">f  Facebook</a>
       </div>
     </div>
     <div class="map" style="display:grid;gap:10px;align-content:center">
@@ -251,9 +251,9 @@
 <footer>© <span id="shop-name-footer">iFix Laptop</span> · Laptop cũ hàng US · <a href="https://www.facebook.com/dang.nguyenphong/" target="_blank" rel="noopener" style="color:#1877f2;font-weight:700">Facebook</a></footer>
 
 <div class="float">
-  <a class="fb" href="https://www.facebook.com/dang.nguyenphong/" target="_blank" rel="noopener" aria-label="Facebook">f</a>
-  <a class="zalo" id="float-zalo" href="#" target="_blank" rel="noopener" aria-label="Nhắn Zalo">Zalo</a>
-  <a class="call" id="float-call" href="#" aria-label="Gọi điện">📞</a>
+  <a class="fb" data-goatcounter-click="bam-facebook" href="https://www.facebook.com/dang.nguyenphong/" target="_blank" rel="noopener" aria-label="Facebook">f</a>
+  <a class="zalo" id="float-zalo" data-goatcounter-click="bam-zalo-noi" href="#" target="_blank" rel="noopener" aria-label="Nhắn Zalo">Zalo</a>
+  <a class="call" id="float-call" data-goatcounter-click="bam-goi-dien" href="#" aria-label="Gọi điện">📞</a>
 </div>
 
 <script>
@@ -358,6 +358,7 @@
     const msg = `Chào shop, mình muốn hỏi máy ${p.name} (${p.cpu}, ${p.ram}, ${p.ssd}) giá ${fmt(p.price)}. Máy còn không ạ?`;
     navigator.clipboard?.writeText(msg).catch(() => {});
     alert("Đã copy câu hỏi về máy này. Zalo sẽ mở ra, bạn dán (giữ ô chat → Dán) rồi gửi cho shop nhé!");
+    window.goatcounter && window.goatcounter.count && window.goatcounter.count({ path: "hoi-may-" + p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"), title: "Hỏi máy: " + p.name, event: true });
     window.open(zaloUrl, "_blank");
   }
 
@@ -374,5 +375,7 @@
   });
   render("Tất cả");
 </script>
+<!-- Đếm lượt xem: https://ifixlaptop.goatcounter.com -->
+<script data-goatcounter="https://ifixlaptop.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
 </body>
 </html>
