@@ -319,23 +319,22 @@
   // work: true = máy trạm đồ họa; gpu: card rời (để trống nếu không có); note: ghi chú thêm
   // qty: số máy còn (bỏ trống = 1); sold: true để hiện "Đã bán"
   const PRODUCTS = [
+    { brand: "ThinkPad", name: "ThinkPad P50 15.6\"", cpu: "Xeon", ram: "16GB", ssd: "512GB SSD", gpu: "Quadro M2200", screen: "15.6\" Full HD", price: 6900000, work: true },
+    { brand: "ThinkPad", name: "ThinkPad T14 Gen 3", cpu: "Core i7-1270P", ram: "16GB", ssd: "256GB SSD", screen: "14\" Full HD", price: 12650000 },
     { brand: "ThinkPad", name: "ThinkPad X1 Carbon Gen 12", cpu: "Core Ultra 5", ram: "16GB", ssd: "256GB SSD", screen: "Full HD cảm ứng", note: "Like new", price: 28175000 },
 
     { brand: "HP", name: "HP EliteBook 840 G10", cpu: "Core i5-1350P", ram: "16GB", ssd: "256GB SSD", screen: "Full HD", price: 13800000 },
-    { brand: "HP", name: "HP EliteBook 645 G11", cpu: "Ryzen 5 7535U", ram: "16GB", ssd: "256GB SSD", screen: "Full HD", price: 13800000 },
-    { brand: "HP", name: "HP ZBook Firefly 14 G11", cpu: "Core Ultra 7", ram: "16GB", ssd: "256GB SSD", screen: "Full HD", price: 18975000, work: true },
+    { brand: "HP", name: "HP EliteBook 645 G11", cpu: "Ryzen 5 7535U", ram: "16GB", ssd: "256GB SSD", screen: "Full HD", price: 14375000 },
+    { brand: "HP", name: "HP ZBook Firefly 14 G11", cpu: "Core Ultra 7 155H", ram: "16GB", ssd: "256GB SSD", screen: "Full HD", price: 18975000, work: true },
     { brand: "HP", name: "HP ZBook Studio 16 G9", cpu: "Core i7-12800H", ram: "16GB", ssd: "512GB SSD", gpu: "RTX A1000", screen: "4K OLED cảm ứng", price: 21850000, work: true },
-    { brand: "HP", name: "HP ZBook Fury 16 G9", cpu: "Core i9-12950HX", ram: "16GB", ssd: "512GB SSD", gpu: "RTX A2000 8GB", screen: "Full HD", price: 23000000, work: true },
+    { brand: "HP", name: "HP ZBook Fury 16 G9", cpu: "Core i9-12950HX", ram: "16GB", ssd: "512GB SSD", gpu: "RTX A2000 8GB", screen: "Full HD", price: 27600000, work: true },
 
     { brand: "Dell", name: "Dell Latitude 5520", cpu: "Core i5-1145G7", ram: "16GB", ssd: "256GB SSD", screen: "15.6\" Full HD cảm ứng", price: 9775000 },
     { brand: "Dell", name: "Dell Latitude 5530", cpu: "Core i5-1245U", ram: "16GB", ssd: "256GB SSD", screen: "15.6\" Full HD cảm ứng", price: 10925000 },
-    { brand: "Dell", name: "Dell Latitude 5431", cpu: "Core i7-1270P", ram: "16GB", ssd: "256GB SSD", screen: "14\" Full HD", price: 13225000 },
-    { brand: "Dell", name: "Dell Pro 14 PC14250", cpu: "Core Ultra 5 235U", ram: "16GB", ssd: "256GB SSD", screen: "14\" Full HD", price: 20700000 },
     { brand: "Dell", name: "Dell Precision 7540", cpu: "Core i7-9850H", ram: "16GB", ssd: "512GB SSD", gpu: "RTX 3000 6GB", screen: "15.6\" Full HD", price: 12650000, work: true },
-    { brand: "Dell", name: "Dell Precision 5540", cpu: "Core i7-9850H", ram: "16GB", ssd: "512GB SSD", gpu: "Quadro T1000", screen: "15.6\" Full HD", price: 12650000, work: true },
-    { brand: "Dell", name: "Dell Precision 5560", cpu: "Core i7-11850H", ram: "16GB", ssd: "512GB SSD", gpu: "Quadro T2000", screen: "15.6\" Full HD", price: 19550000, work: true },
-    { brand: "Dell", name: "Dell Precision 5570", cpu: "Core i7-12800H", ram: "16GB", ssd: "512GB SSD", gpu: "RTX A1000", screen: "15.6\" 4K cảm ứng", price: 21850000, work: true },
-    { brand: "Dell", name: "Dell Precision 5480", cpu: "Core i7-13800H", ram: "32GB", ssd: "512GB SSD", gpu: "RTX A1000", screen: "14\" Full HD", price: 26450000, work: true },
+    { brand: "Dell", name: "Dell Latitude 5431", cpu: "Core i7-1270P", ram: "16GB", ssd: "256GB SSD", screen: "14\" Full HD", price: 13225000 },
+    { brand: "Dell", name: "Dell Precision 3571", cpu: "Core i7-12700H", ram: "16GB", ssd: "512GB SSD", gpu: "T600 4GB", screen: "15.6\" Full HD", price: 17250000, work: true },
+    { brand: "Dell", name: "Dell Precision 3581", cpu: "Core i7-13700H", ram: "16GB", ssd: "512GB SSD", gpu: "RTX A500 4GB", screen: "15.6\" Full HD", price: 19550000, work: true },
     { brand: "Dell", name: "Dell Precision 7670 16\"", cpu: "Core i7-12850HX", ram: "32GB", ssd: "512GB SSD", gpu: "RTX A3000", screen: "16\" Full HD", price: 35650000, work: true },
     { brand: "Dell", name: "Dell Precision 7680", cpu: "Core i7-13850HX", ram: "32GB", ssd: "1TB SSD", gpu: "RTX A2000", screen: "16\" Full HD", price: 39100000, work: true, qty: 2 },
     { brand: "Dell", name: "Dell Precision 7670 17\"", cpu: "Core i9-12950HX", ram: "32GB", ssd: "512GB SSD", gpu: "RTX A4500 16GB", screen: "17\" 4K cảm ứng", price: 40250000, work: true }
@@ -344,6 +343,8 @@
 
   // Ảnh từng máy (file trong thư mục img/). Máy chưa có ảnh sẽ hiện ô màu theo hãng.
   const IMG = {
+    "ThinkPad P50 15.6\"": "p50",
+    "ThinkPad T14 Gen 3": "t14g3",
     "ThinkPad X1 Carbon Gen 12": "x1c12",
     "HP EliteBook 840 G10": "840g10",
     "HP EliteBook 645 G11": "645g11",
@@ -353,12 +354,9 @@
     "Dell Latitude 5520": "lat5520",
     "Dell Latitude 5530": "lat5530",
     "Dell Latitude 5431": "lat5431",
-    "Dell Pro 14 PC14250": "pro14",
+    "Dell Precision 3571": "p3571",
+    "Dell Precision 3581": "p3581",
     "Dell Precision 7540": "p7540",
-    "Dell Precision 5540": "p5540",
-    "Dell Precision 5560": "p5560",
-    "Dell Precision 5480": "p5480",
-    "Dell Precision 5570": "p5570",
     "Dell Precision 7670 16\"": "p7670",
     "Dell Precision 7670 17\"": "p7670",
     "Dell Precision 7680": "p7680"
