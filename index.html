@@ -211,7 +211,7 @@
 
   <section id="san-pham">
     <h2>Máy đang có sẵn</h2>
-    <p class="sub">18 máy sẵn hàng, lọc theo nhu cầu hoặc theo hãng. Hỏi Zalo để xem ảnh và video máy thật.</p>
+    <p class="sub">20 máy sẵn hàng, lọc theo nhu cầu hoặc theo hãng. Hỏi Zalo để xem ảnh và video máy thật.</p>
     <div class="filters"></div>
     <div class="grid"></div>
   </section>
@@ -328,6 +328,7 @@
     { brand: "HP", name: "HP ZBook Firefly 14 G11", cpu: "Core Ultra 7 155H", ram: "16GB", ssd: "256GB SSD", screen: "Full HD", price: 18975000, work: true },
     { brand: "HP", name: "HP ZBook Studio 16 G9", cpu: "Core i7-12800H", ram: "16GB", ssd: "512GB SSD", gpu: "RTX A1000", screen: "4K OLED cảm ứng", price: 21850000, work: true },
     { brand: "HP", name: "HP ZBook Fury 16 G9", cpu: "Core i9-12950HX", ram: "16GB", ssd: "512GB SSD", gpu: "RTX A2000 8GB", screen: "Full HD", price: 27600000, work: true },
+    { brand: "HP", name: "HP ZBook Fury 16 G11", cpu: "Core Ultra 7", ram: "32GB", ssd: "512GB SSD", gpu: "RTX A1000", screen: "Full HD", work: true },
 
     { brand: "Dell", name: "Dell Latitude 5520", cpu: "Core i5-1145G7", ram: "16GB", ssd: "256GB SSD", screen: "15.6\" Full HD cảm ứng", price: 9775000 },
     { brand: "Dell", name: "Dell Latitude 5530", cpu: "Core i5-1245U", ram: "16GB", ssd: "256GB SSD", screen: "15.6\" Full HD cảm ứng", price: 10925000 },
@@ -335,6 +336,7 @@
     { brand: "Dell", name: "Dell Latitude 5431", cpu: "Core i7-1270P", ram: "16GB", ssd: "256GB SSD", screen: "14\" Full HD", price: 13225000 },
     { brand: "Dell", name: "Dell Precision 3571", cpu: "Core i7-12700H", ram: "16GB", ssd: "512GB SSD", gpu: "T600 4GB", screen: "15.6\" Full HD", price: 17250000, work: true },
     { brand: "Dell", name: "Dell Precision 3581", cpu: "Core i7-13700H", ram: "16GB", ssd: "512GB SSD", gpu: "RTX A500 4GB", screen: "15.6\" Full HD", price: 19550000, work: true },
+    { brand: "Dell", name: "Dell Precision 5570", cpu: "Core i7-12800H", ram: "16GB", ssd: "512GB SSD", gpu: "RTX A1000", screen: "15.6\" 4K cảm ứng", price: 21850000, work: true },
     { brand: "Dell", name: "Dell Precision 7670 16\"", cpu: "Core i7-12850HX", ram: "32GB", ssd: "512GB SSD", gpu: "RTX A3000", screen: "16\" Full HD", price: 35650000, work: true },
     { brand: "Dell", name: "Dell Precision 7680", cpu: "Core i7-13850HX", ram: "32GB", ssd: "1TB SSD", gpu: "RTX A2000", screen: "16\" Full HD", price: 39100000, work: true, qty: 2 },
     { brand: "Dell", name: "Dell Precision 7670 17\"", cpu: "Core i9-12950HX", ram: "32GB", ssd: "512GB SSD", gpu: "RTX A4500 16GB", screen: "17\" 4K cảm ứng", price: 40250000, work: true }
@@ -351,18 +353,20 @@
     "HP ZBook Firefly 14 G11": "firefly14g11",
     "HP ZBook Studio 16 G9": "studio16g9",
     "HP ZBook Fury 16 G9": "fury16g9",
+    "HP ZBook Fury 16 G11": "fury16g11",
     "Dell Latitude 5520": "lat5520",
     "Dell Latitude 5530": "lat5530",
     "Dell Latitude 5431": "lat5431",
     "Dell Precision 3571": "p3571",
     "Dell Precision 3581": "p3581",
     "Dell Precision 7540": "p7540",
+    "Dell Precision 5570": "p5570",
     "Dell Precision 7670 16\"": "p7670",
     "Dell Precision 7670 17\"": "p7670",
     "Dell Precision 7680": "p7680"
   };
 
-  const fmt = n => n.toLocaleString("vi-VN") + "đ";
+  const fmt = n => n ? n.toLocaleString("vi-VN") + "đ" : "Liên hệ";
   const zaloUrl = `https://zalo.me/${SHOP.phone}`;
 
   // Đổ thông tin shop vào trang
@@ -414,7 +418,7 @@
   };
 
   function ask(p) {
-    const msg = `Chào shop, mình muốn hỏi máy ${p.name} (${p.cpu}, ${p.ram}, ${p.ssd}) giá ${fmt(p.price)}. Máy còn không ạ?`;
+    const msg = `Chào shop, mình muốn hỏi máy ${p.name} (${p.cpu}, ${p.ram}, ${p.ssd})${p.price ? " giá " + fmt(p.price) : ""}. Máy còn không ạ?`;
     navigator.clipboard?.writeText(msg).catch(() => {});
     alert("Đã copy câu hỏi về máy này. Zalo sẽ mở ra, bạn dán (giữ ô chat → Dán) rồi gửi cho shop nhé!");
     window.goatcounter && window.goatcounter.count && window.goatcounter.count({ path: "hoi-may-" + p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"), title: "Hỏi máy: " + p.name, event: true });
