@@ -71,6 +71,7 @@
   .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
   .chip { padding: 7px 16px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); font: inherit; font-weight: 500; cursor: pointer; color: var(--muted); }
   .chip.active { background: var(--brand); border-color: var(--brand); color: #fff; }
+  .loading { grid-column: 1 / -1; text-align: center; color: var(--muted); padding: 40px 0; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; margin-bottom: 56px; }
   .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column; }
   .thumb { aspect-ratio: 16/10; display: grid; place-items: center; font-weight: 800; color: #fff; font-size: 1.1rem; position: relative; }
@@ -328,7 +329,8 @@
     phone: "0914993368"             // số Zalo / điện thoại
   };
 
-  // ===== DANH SÁCH MÁY: thêm/sửa/xóa máy ở đây =====
+  // ===== DANH SÁCH MÁY DỰ PHÒNG =====
+  // Web đọc danh sách máy từ bảng Google Sheets (SHEET_ID bên dưới). Danh sách này chỉ dùng khi không tải được bảng.
   // work: true = máy trạm đồ họa; gpu: card rời (để trống nếu không có); note: ghi chú thêm
   // qty: số máy còn (bỏ trống = 1)
   // sold: "2026-11-15" (ngày bán) khi máy đã bán hết. Máy đã bán tự xuống cuối danh sách,
@@ -384,8 +386,16 @@
     "Dell Precision 7680": "p7680"
   };
 
+  // ===== BẢNG GOOGLE SHEETS: web đọc danh sách máy từ bảng này mỗi lần khách mở trang =====
+  // Sửa giá, thêm máy, ghi ngày bán ngay trong bảng, không cần sửa code.
+  // Nếu không tải được bảng (mất mạng, bảng bị khóa...) web dùng bản lần trước, rồi tới danh sách PRODUCTS ở trên.
+  const SHEET_ID = "1fmLC2Z9kXulfQtPzyPAt3XamGivs5YjCyfQZmpS5yUI";
+  const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&headers=1`;
+  const CACHE_KEY = "ifix-ds-may";
+
   const fmt = n => n ? n.toLocaleString("vi-VN") + "đ" : "Liên hệ";
   const zaloUrl = `https://zalo.me/${SHOP.phone}`;
+  const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
   // Đổ thông tin shop vào trang
   document.getElementById("shop-name-footer").textContent = SHOP.name;
@@ -393,20 +403,91 @@
   ["zalo-link", "float-zalo"].forEach(id => document.getElementById(id).href = zaloUrl);
   document.getElementById("float-call").href = `tel:${SHOP.phone}`;
 
+  // ===== Đọc bảng Google Sheets =====
+  // Tên cột không phân biệt hoa thường / có dấu, thứ tự cột đổi thoải mái.
+  const key = s => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/đ/gi, "d").toLowerCase().replace(/[^a-z0-9]/g, "");
+  const COLS = { hang: "brand", tenmay: "name", cpu: "cpu", ram: "ram", ocung: "ssd", ssd: "ssd", cardroi: "gpu", card: "gpu", manhinh: "screen",
+                 giaban: "price", gia: "price", maytram: "work", ghichu: "note", soluong: "qty", ngayban: "sold", daban: "sold", anh: "img", hinhanh: "img" };
+  const pad = n => String(n).padStart(2, "0");
+  const ymd = (y, m, d) => `${y}-${pad(m)}-${pad(d)}`;
+
+  function cellText(c) {
+    if (!c || c.v == null) return "";
+    if (typeof c.v === "string") return c.v.trim();
+    return String(c.f ?? c.v).trim();
+  }
+  // Giá: 21850000 / 21.850.000 / 21,85tr / 21.85 (hiểu là triệu). Trống hoặc chữ "Liên hệ" = Liên hệ.
+  function cellPrice(c) {
+    if (!c || c.v == null) return 0;
+    if (typeof c.v === "number") return Math.round(c.v < 1000 ? c.v * 1e6 : c.v);
+    const s = String(c.v).toLowerCase().replace(/\s/g, "");
+    const m = s.match(/^(\d+(?:[.,]\d+)?)(tr|trieu|triệu|m)?$/);
+    if (m && (m[2] || parseFloat(m[1].replace(",", ".")) < 1000) && !/^\d{1,3}([.,]\d{3})+$/.test(m[1])) return Math.round(parseFloat(m[1].replace(",", ".")) * 1e6);
+    const d = s.replace(/\D/g, "");
+    return d ? +d : 0;
+  }
+  // Ngày bán: ô ngày của Sheets, hoặc gõ 15/11/2026, 15/11, 2026-11-15
+  function cellDate(c) {
+    if (!c || c.v == null || c.v === "") return "";
+    let m = String(c.v).match(/^Date\((\d+),(\d+),(\d+)/);
+    if (m) return ymd(+m[1], +m[2] + 1, +m[3]);
+    const s = cellText(c);
+    if ((m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) return ymd(+m[1], +m[2], +m[3]);
+    if ((m = s.match(/^(\d{1,2})[\/.-](\d{1,2})(?:[\/.-](\d{2,4}))?$/))) {
+      const y = m[3] ? (m[3].length === 2 ? 2000 + +m[3] : +m[3]) : new Date().getFullYear();
+      return ymd(y, +m[2], +m[1]);
+    }
+    return s ? "x" : "";   // ghi chữ gì đó (vd "rồi") = đã bán, không rõ ngày
+  }
+  const yes = s => !!s && !/^(khong|ko|k|0|no|false)$/.test(key(s));
+
+  function parseSheet(txt) {
+    const j = JSON.parse(txt.slice(txt.indexOf("(") + 1, txt.lastIndexOf(")")));
+    if (j.status === "error") throw new Error("sheet error");
+    let rows = j.table.rows.map(r => r.c || []);
+    let labels = j.table.cols.map(c => c.label);
+    if (!labels.some(l => COLS[key(l)])) { labels = (rows.shift() || []).map(cellText); }   // tiêu đề nằm ở dòng đầu
+    const idx = {};
+    labels.forEach((l, i) => { const f = COLS[key(l)]; if (f && !(f in idx)) idx[f] = i; });
+    if (!("name" in idx)) throw new Error("no name column");
+    const get = (r, f) => idx[f] == null ? null : r[idx[f]];
+    return rows.map(r => {
+      const p = {
+        brand: cellText(get(r, "brand")) || "Khác", name: cellText(get(r, "name")),
+        cpu: cellText(get(r, "cpu")), ram: cellText(get(r, "ram")), ssd: cellText(get(r, "ssd")),
+        gpu: cellText(get(r, "gpu")), screen: cellText(get(r, "screen")), note: cellText(get(r, "note")),
+        price: cellPrice(get(r, "price")), work: yes(cellText(get(r, "work"))), img: cellText(get(r, "img"))
+      };
+      const q = get(r, "qty"); const qn = q && q.v != null && q.v !== "" ? parseInt(cellText(q), 10) : NaN;
+      if (!isNaN(qn)) p.qty = qn;
+      const sold = cellDate(get(r, "sold"));
+      if (sold) p.sold = sold === "x" ? true : sold;
+      else if (p.qty === 0) p.sold = true;   // số lượng 0 = hết hàng
+      return p;
+    }).filter(p => p.name);
+  }
+
+  // Ảnh: trống = ô màu theo hãng; tên ngắn (vd p5570) = img/p5570.jpg; link Google Drive hoặc link ảnh bất kỳ
+  function imgSrc(v) {
+    if (!v) return "";
+    if (/^https?:\/\//i.test(v)) {
+      const m = v.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?(?:.*&)?id=|thumbnail\?(?:.*&)?id=)([\w-]{20,})/);
+      return m ? `https://drive.google.com/thumbnail?id=${m[1]}&sz=w800` : v;
+    }
+    return "img/" + v.replace(/\.jpe?g$/i, "") + ".jpg";
+  }
+
   const filtersEl = document.querySelector(".filters");
   const gridEl = document.querySelector(".grid");
   const WORK = "Máy trạm đồ họa";
   const OFFICE = "Văn phòng";
-  const brands = ["Tất cả", OFFICE, WORK, ...new Set(PRODUCTS.map(p => p.brand))];
 
   // ===== Hết hàng / đã bán =====
   const DAY = 86400000;
   const today = new Date(); today.setHours(0, 0, 0, 0);
   const soldDays = p => typeof p.sold === "string" ? Math.round((today - new Date(p.sold + "T00:00:00")) / DAY) : 0;
   const soldAgo = p => { const d = soldDays(p); return typeof p.sold !== "string" ? "" : d <= 0 ? "Vừa bán hôm nay" : d === 1 ? "Bán hôm qua" : `Bán ${d} ngày trước`; };
-  // Máy đã bán quá SOLD_SHOW_DAYS ngày thì ẩn hẳn khỏi web
-  const LIST = PRODUCTS.filter(p => !p.sold || typeof p.sold !== "string" || soldDays(p) <= SOLD_SHOW_DAYS);
-  const inStock = LIST.filter(p => !p.sold);
+  let LIST = [], inStock = [];
 
   // Gợi ý máy còn hàng gần giống nhất: cùng nhu cầu (máy trạm/văn phòng), giá gần nhất, ưu tiên cùng hãng
   function similar(p, n = 2) {
@@ -416,17 +497,6 @@
       .map(q => ({ q, score: (q.price && ref ? Math.abs(q.price - ref) / ref : 9) - (q.brand === p.brand ? 0.08 : 0) }))   // máy "Liên hệ" xếp sau
       .sort((a, b) => a.score - b.score)
       .slice(0, n).map(x => x.q);
-  }
-
-  // Tự đếm số máy còn hàng (cộng cả qty)
-  document.getElementById("stock-count").textContent = inStock.reduce((t, p) => t + (p.qty || 1), 0) + " máy";
-
-  // Dải "vừa bán" để khách thấy máy ra đều
-  const recent = LIST.filter(p => typeof p.sold === "string").sort((a, b) => soldDays(a) - soldDays(b)).slice(0, 3);
-  if (recent.length) {
-    const r = document.getElementById("recent-sold");
-    r.hidden = false;
-    r.innerHTML = "🔥 Vừa bán: " + recent.map(p => `<b>${p.name}</b> (${soldAgo(p).replace(/^Bán /, "").replace("Vừa bán ", "")})`).join(", ") + ". Máy tốt ra nhanh, nhắn Zalo giữ máy sớm nhé!";
   }
 
   const slug = p => p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
@@ -441,25 +511,28 @@
       el.id = "may-" + slug(p);
       const badge = p.work ? "🎨 Máy trạm" : (p.note || "");
       const alts = p.sold ? similar(p) : [];
+      const src = imgSrc(p.img);
       el.innerHTML = `
-        <div class="thumb${IMG[p.name] ? " has-img" : ""}" style="background:${IMG[p.name] ? "#fff" : (COLORS[p.brand] || "#334155")}">
-          ${badge && !p.sold ? `<span class="cond">${badge}</span>` : ""}
-          ${IMG[p.name] ? `<img src="img/${IMG[p.name]}.jpg" alt="${p.name}" loading="lazy">` : p.brand}
+        <div class="thumb${src ? " has-img" : ""}" style="background:${src ? "#fff" : (COLORS[p.brand] || "#334155")}">
+          ${badge && !p.sold ? `<span class="cond">${esc(badge)}</span>` : ""}
+          ${src ? `<img src="${esc(src)}" alt="${esc(p.name)}" loading="lazy">` : esc(p.brand)}
           ${p.sold ? `<div class="sold">HẾT HÀNG${soldAgo(p) ? `<small>${soldAgo(p)}</small>` : ""}</div>` : ""}
         </div>
         <div class="body">
-          <h3>${p.name}</h3>
+          <h3>${esc(p.name)}</h3>
           <ul class="specs">
-            <li>⚙️ ${p.cpu} · ${p.ram} · ${p.ssd}</li>
-            ${p.gpu ? `<li>🎮 Card rời ${p.gpu}</li>` : ""}
-            <li>🖥️ ${p.screen}</li>
-            ${p.note && p.work ? `<li>✨ ${p.note}</li>` : ""}
+            <li>⚙️ ${[p.cpu, p.ram, p.ssd].filter(Boolean).map(esc).join(" · ")}</li>
+            ${p.gpu ? `<li>🎮 Card rời ${esc(p.gpu)}</li>` : ""}
+            ${p.screen ? `<li>🖥️ ${esc(p.screen)}</li>` : ""}
+            ${p.note && p.work ? `<li>✨ ${esc(p.note)}</li>` : ""}
             ${!p.sold && p.qty > 1 ? `<li>📦 Còn ${p.qty} máy</li>` : ""}
           </ul>
-          ${alts.length ? `<div class="alt"><p>Máy tương tự còn hàng:</p>${alts.map(q => `<a href="#may-${slug(q)}" data-go="${slug(q)}">${q.name}<span>${fmt(q.price)}</span></a>`).join("")}</div>` : ""}
+          ${alts.length ? `<div class="alt"><p>Máy tương tự còn hàng:</p>${alts.map(q => `<a href="#may-${slug(q)}" data-go="${slug(q)}">${esc(q.name)}<span>${fmt(q.price)}</span></a>`).join("")}</div>` : ""}
           <div class="price"><b>${fmt(p.price)}</b></div>
           <button class="btn ${p.sold ? "btn-ghost" : "btn-primary"}">${p.sold ? "🔔 Báo khi có máy giống vậy" : "💬 Hỏi mua qua Zalo"}</button>
         </div>`;
+      const im = el.querySelector("img");
+      if (im) im.onerror = () => { const t = el.querySelector(".thumb"); im.remove(); t.classList.remove("has-img"); t.style.background = COLORS[p.brand] || "#334155"; t.append(p.brand); };
       el.querySelector("button").onclick = () => p.sold ? notifyMe(p) : ask(p);
       el.querySelectorAll("[data-go]").forEach(a => a.onclick = e => { e.preventDefault(); goTo(a.dataset.go); });
       gridEl.appendChild(el);
@@ -492,25 +565,69 @@
   };
 
   function ask(p) {
-    const msg = `Chào shop, mình muốn hỏi máy ${p.name} (${p.cpu}, ${p.ram}, ${p.ssd})${p.price ? " giá " + fmt(p.price) : ""}. Máy còn không ạ?`;
+    const msg = `Chào shop, mình muốn hỏi máy ${p.name} (${[p.cpu, p.ram, p.ssd].filter(Boolean).join(", ")})${p.price ? " giá " + fmt(p.price) : ""}. Máy còn không ạ?`;
     navigator.clipboard?.writeText(msg).catch(() => {});
     alert("Đã copy câu hỏi về máy này. Zalo sẽ mở ra, bạn dán (giữ ô chat → Dán) rồi gửi cho shop nhé!");
     window.goatcounter && window.goatcounter.count && window.goatcounter.count({ path: "hoi-may-" + slug(p), title: "Hỏi máy: " + p.name, event: true });
     window.open(zaloUrl, "_blank");
   }
 
-  brands.forEach((b, i) => {
-    const c = document.createElement("button");
-    c.className = "chip" + (i === 0 ? " active" : "");
-    c.textContent = b;
-    c.onclick = () => {
-      filtersEl.querySelectorAll(".chip").forEach(x => x.classList.remove("active"));
-      c.classList.add("active");
-      render(b);
-    };
-    filtersEl.appendChild(c);
-  });
-  render("Tất cả");
+  // Hiện danh sách máy (từ bảng, hoặc bản dự phòng)
+  function show(products) {
+    // Máy đã bán quá SOLD_SHOW_DAYS ngày thì ẩn hẳn khỏi web
+    LIST = products.filter(p => !p.sold || typeof p.sold !== "string" || soldDays(p) <= SOLD_SHOW_DAYS);
+    inStock = LIST.filter(p => !p.sold);
+
+    // Tự đếm số máy còn hàng (cộng cả qty)
+    document.getElementById("stock-count").textContent = inStock.reduce((t, p) => t + (p.qty || 1), 0) + " máy";
+
+    // Dải "vừa bán" để khách thấy máy ra đều
+    const recent = LIST.filter(p => typeof p.sold === "string").sort((a, b) => soldDays(a) - soldDays(b)).slice(0, 3);
+    const r = document.getElementById("recent-sold");
+    r.hidden = !recent.length;
+    if (recent.length) r.innerHTML = "🔥 Vừa bán: " + recent.map(p => `<b>${esc(p.name)}</b> (${soldAgo(p).replace(/^Bán /, "").replace("Vừa bán ", "")})`).join(", ") + ". Máy tốt ra nhanh, nhắn Zalo giữ máy sớm nhé!";
+
+    const brands = ["Tất cả", OFFICE, WORK, ...new Set(LIST.map(p => p.brand))];
+    filtersEl.innerHTML = "";
+    brands.forEach((b, i) => {
+      const c = document.createElement("button");
+      c.className = "chip" + (i === 0 ? " active" : "");
+      c.textContent = b;
+      c.onclick = () => {
+        filtersEl.querySelectorAll(".chip").forEach(x => x.classList.remove("active"));
+        c.classList.add("active");
+        render(b);
+      };
+      filtersEl.appendChild(c);
+    });
+    render("Tất cả");
+    if (location.hash.startsWith("#may-")) document.getElementById(location.hash.slice(1))?.scrollIntoView({ block: "center" });
+  }
+
+  const BACKUP = PRODUCTS.map(p => ({ ...p, img: IMG[p.name] || "" }));
+  function fallback() {
+    let cached = null;
+    try { cached = JSON.parse(localStorage.getItem(CACHE_KEY) || "null"); } catch (e) {}
+    show(Array.isArray(cached) && cached.length ? cached : BACKUP);
+  }
+
+  gridEl.innerHTML = `<p class="loading">Đang tải danh sách máy...</p>`;
+  (async () => {
+    try {
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), 8000);
+      const res = await fetch(SHEET_URL + "&t=" + Date.now(), { signal: ctl.signal });
+      clearTimeout(timer);
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const list = parseSheet(await res.text());
+      if (!list.length) throw new Error("empty");
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify(list)); } catch (e) {}
+      show(list);
+    } catch (e) {
+      console.warn("Không đọc được bảng Google Sheets, dùng bản dự phòng:", e);
+      fallback();
+    }
+  })();
 </script>
 <!-- Đếm lượt xem: https://ifixlaptop.goatcounter.com -->
 <script data-goatcounter="https://ifixlaptop.goatcounter.com/count" async src="https://gc.zgo.at/count.js"></script>
