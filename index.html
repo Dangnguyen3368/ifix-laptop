@@ -334,10 +334,11 @@
   // sold: "2026-11-15" (ngày bán) khi máy đã bán hết. Máy đã bán tự xuống cuối danh sách,
   //       hiện nhãn ĐÃ BÁN + gợi ý máy tương tự còn hàng, và tự ẩn sau SOLD_SHOW_DAYS ngày.
   const PRODUCTS = [
-    { brand: "ThinkPad", name: "ThinkPad P50 15.6\"", cpu: "Xeon", ram: "16GB", ssd: "512GB SSD", gpu: "Quadro M2200", screen: "15.6\" Full HD", price: 6900000, work: true },
+    { brand: "ThinkPad", name: "ThinkPad P50 15.6\"", cpu: "Xeon", ram: "16GB", ssd: "512GB SSD", gpu: "Quadro M2200", screen: "15.6\" Full HD", price: 6900000, work: true, sold: "2026-11-15" },
     { brand: "ThinkPad", name: "ThinkPad T14 Gen 3", cpu: "Core i7-1270P", ram: "16GB", ssd: "256GB SSD", screen: "14\" Full HD", price: 12650000 },
     { brand: "ThinkPad", name: "ThinkPad X1 Carbon Gen 12", cpu: "Core Ultra 5", ram: "16GB", ssd: "256GB SSD", screen: "Full HD cảm ứng", note: "Like new", price: 28175000 },
 
+    { brand: "HP", name: "HP EliteBook 640 G10", cpu: "Core i5-1345U", ram: "16GB", ssd: "256GB SSD", screen: "14\" Full HD" },
     { brand: "HP", name: "HP EliteBook 840 G10", cpu: "Core i5-1350P", ram: "16GB", ssd: "256GB SSD", screen: "Full HD", price: 13800000 },
     { brand: "HP", name: "HP EliteBook 645 G11", cpu: "Ryzen 5 7535U", ram: "16GB", ssd: "256GB SSD", screen: "Full HD", price: 14375000 },
     { brand: "HP", name: "HP ZBook Firefly 14 G11", cpu: "Core Ultra 7 155H", ram: "16GB", ssd: "256GB SSD", screen: "Full HD", price: 18975000, work: true },
@@ -411,7 +412,7 @@
     const ref = p.price || 0;
     return inStock
       .filter(q => !!q.work === !!p.work)
-      .map(q => ({ q, score: (q.price && ref ? Math.abs(q.price - ref) / ref : 0.5) - (q.brand === p.brand ? 0.08 : 0) }))   // máy "Liên hệ" xếp sau
+      .map(q => ({ q, score: (q.price && ref ? Math.abs(q.price - ref) / ref : 9) - (q.brand === p.brand ? 0.08 : 0) }))   // máy "Liên hệ" xếp sau
       .sort((a, b) => a.score - b.score)
       .slice(0, n).map(x => x.q);
   }
