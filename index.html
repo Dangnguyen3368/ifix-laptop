@@ -79,7 +79,19 @@
   .thumb .cond { z-index: 1; }
   .thumb.has-img .cond { background: #ecfdf5; border: 1px solid #a7f3d0; }
   .thumb .cond { position: absolute; top: 10px; left: 10px; background: rgba(255,255,255,.95); color: var(--ok); font-size: .75rem; font-weight: 700; padding: 2px 8px; border-radius: 6px; }
-  .thumb .sold { position: absolute; inset: 0; background: rgba(15,23,42,.65); display: grid; place-items: center; font-size: 1.2rem; }
+  .thumb .sold { position: absolute; inset: 0; z-index: 2; background: rgba(15,23,42,.62); display: grid; place-items: center; align-content: center; gap: 2px; font-size: 1.25rem; font-weight: 800; letter-spacing: .04em; color: #fff; }
+  .thumb .sold small { font-size: .78rem; font-weight: 500; letter-spacing: 0; opacity: .9; }
+  .card.is-sold { background: #f8fafc; }
+  .card.is-sold .thumb img { filter: grayscale(1); opacity: .7; }
+  .card.is-sold h3, .card.is-sold .specs { opacity: .7; }
+  .card.is-sold .price b { color: var(--muted); text-decoration: line-through; font-size: 1rem; }
+  .alt { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; padding: 10px; font-size: .86rem; }
+  .alt p { color: var(--muted); margin-bottom: 6px; }
+  .alt a { display: flex; justify-content: space-between; gap: 8px; color: var(--brand); font-weight: 600; text-decoration: none; padding: 3px 0; }
+  .alt a span { color: #dc2626; white-space: nowrap; }
+  .card.flash { box-shadow: 0 0 0 3px var(--brand); transition: box-shadow .3s; }
+  .last { font-size: .8rem; font-weight: 700; color: #b45309; }
+  .recent { background: #fff7ed; border: 1px solid #fed7aa; color: #9a3412; border-radius: 12px; padding: 10px 14px; margin-bottom: 16px; font-size: .92rem; }
   .card .body { padding: 14px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
   .card h3 { font-size: 1.02rem; line-height: 1.35; }
   .specs { list-style: none; display: grid; gap: 2px; color: var(--muted); font-size: .88rem; }
@@ -211,8 +223,9 @@
 
   <section id="san-pham">
     <h2>Máy đang có sẵn</h2>
-    <p class="sub">20 máy sẵn hàng, lọc theo nhu cầu hoặc theo hãng. Hỏi Zalo để xem ảnh và video máy thật.</p>
+    <p class="sub"><span id="stock-count">20 máy</span> sẵn hàng, lọc theo nhu cầu hoặc theo hãng. Hỏi Zalo để xem ảnh và video máy thật.</p>
     <div class="filters"></div>
+    <div class="recent" id="recent-sold" hidden></div>
     <div class="grid"></div>
   </section>
 
@@ -317,7 +330,9 @@
 
   // ===== DANH SÁCH MÁY: thêm/sửa/xóa máy ở đây =====
   // work: true = máy trạm đồ họa; gpu: card rời (để trống nếu không có); note: ghi chú thêm
-  // qty: số máy còn (bỏ trống = 1); sold: true để hiện "Đã bán"
+  // qty: số máy còn (bỏ trống = 1)
+  // sold: "2026-11-15" (ngày bán) khi máy đã bán hết. Máy đã bán tự xuống cuối danh sách,
+  //       hiện nhãn ĐÃ BÁN + gợi ý máy tương tự còn hàng, và tự ẩn sau SOLD_SHOW_DAYS ngày.
   const PRODUCTS = [
     { brand: "ThinkPad", name: "ThinkPad P50 15.6\"", cpu: "Xeon", ram: "16GB", ssd: "512GB SSD", gpu: "Quadro M2200", screen: "15.6\" Full HD", price: 6900000, work: true },
     { brand: "ThinkPad", name: "ThinkPad T14 Gen 3", cpu: "Core i7-1270P", ram: "16GB", ssd: "256GB SSD", screen: "14\" Full HD", price: 12650000 },
@@ -341,6 +356,7 @@
     { brand: "Dell", name: "Dell Precision 7680", cpu: "Core i7-13850HX", ram: "32GB", ssd: "1TB SSD", gpu: "RTX A2000", screen: "16\" Full HD", price: 39100000, work: true, qty: 2 },
     { brand: "Dell", name: "Dell Precision 7670 17\"", cpu: "Core i9-12950HX", ram: "32GB", ssd: "512GB SSD", gpu: "RTX A4500 16GB", screen: "17\" 4K cảm ứng", price: 40250000, work: true }
   ];
+  const SOLD_SHOW_DAYS = 30;   // máy đã bán còn hiện trên web bao nhiêu ngày rồi tự ẩn (bằng thời gian bảo hành)
   const COLORS = { Dell: "#1d4ed8", HP: "#0e7490", ThinkPad: "#111827" };
 
   // Ảnh từng máy (file trong thư mục img/). Máy chưa có ảnh sẽ hiện ô màu theo hãng.
@@ -381,17 +397,53 @@
   const OFFICE = "Văn phòng";
   const brands = ["Tất cả", OFFICE, WORK, ...new Set(PRODUCTS.map(p => p.brand))];
 
+  // ===== Hết hàng / đã bán =====
+  const DAY = 86400000;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const soldDays = p => typeof p.sold === "string" ? Math.round((today - new Date(p.sold + "T00:00:00")) / DAY) : 0;
+  const soldAgo = p => { const d = soldDays(p); return typeof p.sold !== "string" ? "" : d <= 0 ? "Vừa bán hôm nay" : d === 1 ? "Bán hôm qua" : `Bán ${d} ngày trước`; };
+  // Máy đã bán quá SOLD_SHOW_DAYS ngày thì ẩn hẳn khỏi web
+  const LIST = PRODUCTS.filter(p => !p.sold || typeof p.sold !== "string" || soldDays(p) <= SOLD_SHOW_DAYS);
+  const inStock = LIST.filter(p => !p.sold);
+
+  // Gợi ý máy còn hàng gần giống nhất: cùng nhu cầu (máy trạm/văn phòng), giá gần nhất, ưu tiên cùng hãng
+  function similar(p, n = 2) {
+    const ref = p.price || 0;
+    return inStock
+      .filter(q => !!q.work === !!p.work)
+      .map(q => ({ q, score: (q.price && ref ? Math.abs(q.price - ref) / ref : 0.5) - (q.brand === p.brand ? 0.08 : 0) }))   // máy "Liên hệ" xếp sau
+      .sort((a, b) => a.score - b.score)
+      .slice(0, n).map(x => x.q);
+  }
+
+  // Tự đếm số máy còn hàng (cộng cả qty)
+  document.getElementById("stock-count").textContent = inStock.reduce((t, p) => t + (p.qty || 1), 0) + " máy";
+
+  // Dải "vừa bán" để khách thấy máy ra đều
+  const recent = LIST.filter(p => typeof p.sold === "string").sort((a, b) => soldDays(a) - soldDays(b)).slice(0, 3);
+  if (recent.length) {
+    const r = document.getElementById("recent-sold");
+    r.hidden = false;
+    r.innerHTML = "🔥 Vừa bán: " + recent.map(p => `<b>${p.name}</b> (${soldAgo(p).replace(/^Bán /, "").replace("Vừa bán ", "")})`).join(", ") + ". Máy tốt ra nhanh, nhắn Zalo giữ máy sớm nhé!";
+  }
+
+  const slug = p => p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+
   function render(f) {
     gridEl.innerHTML = "";
-    PRODUCTS.filter(p => f === "Tất cả" || p.brand === f || (f === WORK && p.work) || (f === OFFICE && !p.work)).forEach(p => {
+    LIST.filter(p => f === "Tất cả" || p.brand === f || (f === WORK && p.work) || (f === OFFICE && !p.work))
+      .sort((a, b) => !!a.sold - !!b.sold)   // máy đã bán xuống cuối
+      .forEach(p => {
       const el = document.createElement("div");
-      el.className = "card";
+      el.className = "card" + (p.sold ? " is-sold" : "");
+      el.id = "may-" + slug(p);
       const badge = p.work ? "🎨 Máy trạm" : (p.note || "");
+      const alts = p.sold ? similar(p) : [];
       el.innerHTML = `
         <div class="thumb${IMG[p.name] ? " has-img" : ""}" style="background:${IMG[p.name] ? "#fff" : (COLORS[p.brand] || "#334155")}">
-          ${badge ? `<span class="cond">${badge}</span>` : ""}
+          ${badge && !p.sold ? `<span class="cond">${badge}</span>` : ""}
           ${IMG[p.name] ? `<img src="img/${IMG[p.name]}.jpg" alt="${p.name}" loading="lazy">` : p.brand}
-          ${p.sold ? '<div class="sold">ĐÃ BÁN</div>' : ""}
+          ${p.sold ? `<div class="sold">HẾT HÀNG${soldAgo(p) ? `<small>${soldAgo(p)}</small>` : ""}</div>` : ""}
         </div>
         <div class="body">
           <h3>${p.name}</h3>
@@ -400,14 +452,34 @@
             ${p.gpu ? `<li>🎮 Card rời ${p.gpu}</li>` : ""}
             <li>🖥️ ${p.screen}</li>
             ${p.note && p.work ? `<li>✨ ${p.note}</li>` : ""}
-            ${p.qty > 1 ? `<li>📦 Còn ${p.qty} máy</li>` : ""}
+            ${!p.sold && p.qty > 1 ? `<li>📦 Còn ${p.qty} máy</li>` : ""}
           </ul>
+          ${alts.length ? `<div class="alt"><p>Máy tương tự còn hàng:</p>${alts.map(q => `<a href="#may-${slug(q)}" data-go="${slug(q)}">${q.name}<span>${fmt(q.price)}</span></a>`).join("")}</div>` : ""}
           <div class="price"><b>${fmt(p.price)}</b></div>
-          <button class="btn ${p.sold ? "btn-ghost" : "btn-primary"}">${p.sold ? "Hỏi máy tương tự" : "💬 Hỏi mua qua Zalo"}</button>
+          <button class="btn ${p.sold ? "btn-ghost" : "btn-primary"}">${p.sold ? "🔔 Báo khi có máy giống vậy" : "💬 Hỏi mua qua Zalo"}</button>
         </div>`;
-      el.querySelector("button").onclick = () => ask(p);
+      el.querySelector("button").onclick = () => p.sold ? notifyMe(p) : ask(p);
+      el.querySelectorAll("[data-go]").forEach(a => a.onclick = e => { e.preventDefault(); goTo(a.dataset.go); });
       gridEl.appendChild(el);
     });
+  }
+
+  // Bấm máy gợi ý: chuyển về "Tất cả" nếu cần, cuộn tới và nháy viền
+  function goTo(id) {
+    if (!document.getElementById("may-" + id)) filtersEl.querySelector(".chip").click();
+    const card = document.getElementById("may-" + id);
+    if (!card) return;
+    card.scrollIntoView({ behavior: "smooth", block: "center" });
+    card.classList.add("flash");
+    setTimeout(() => card.classList.remove("flash"), 1600);
+  }
+
+  function notifyMe(p) {
+    const msg = `Chào shop, mình thấy máy ${p.name} (${p.cpu}, ${p.ram}${p.gpu ? ", " + p.gpu : ""}) đã bán. Khi nào shop có máy tương tự${p.price ? " tầm giá " + fmt(p.price) : ""} thì báo mình qua Zalo này nhé!`;
+    navigator.clipboard?.writeText(msg).catch(() => {});
+    window.goatcounter && window.goatcounter.count && window.goatcounter.count({ path: "cho-may-" + slug(p), title: "Chờ máy giống: " + p.name, event: true });
+    alert("Đã copy lời nhắn đăng ký chờ máy. Zalo sẽ mở ra, bạn dán (giữ ô chat → Dán) rồi gửi, shop sẽ báo khi có máy giống vậy nhé!");
+    window.open(zaloUrl, "_blank");
   }
 
   document.getElementById("sell-btn").onclick = () => {
@@ -421,7 +493,7 @@
     const msg = `Chào shop, mình muốn hỏi máy ${p.name} (${p.cpu}, ${p.ram}, ${p.ssd})${p.price ? " giá " + fmt(p.price) : ""}. Máy còn không ạ?`;
     navigator.clipboard?.writeText(msg).catch(() => {});
     alert("Đã copy câu hỏi về máy này. Zalo sẽ mở ra, bạn dán (giữ ô chat → Dán) rồi gửi cho shop nhé!");
-    window.goatcounter && window.goatcounter.count && window.goatcounter.count({ path: "hoi-may-" + p.name.toLowerCase().replace(/[^a-z0-9]+/g, "-"), title: "Hỏi máy: " + p.name, event: true });
+    window.goatcounter && window.goatcounter.count && window.goatcounter.count({ path: "hoi-may-" + slug(p), title: "Hỏi máy: " + p.name, event: true });
     window.open(zaloUrl, "_blank");
   }
 
